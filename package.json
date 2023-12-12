@@ -9,6 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@nut-tree/nut-js": "^3.1.2",
     "robotjs": "0.6.0"
   }
 }

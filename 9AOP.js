@@ -1,6 +1,5 @@
 const robot = require("robotjs");
 const wait = require("./wait");
-const fs = require("fs");
 
 
 // Get Iteration Count
@@ -20,34 +19,53 @@ if (!isFinite(iterationCount)) {
 }
 
 
-start({iteration: iterationCount}).catch(console.error);
+start({iterationCount}).catch(console.error);
 
 
-async function start({iteration = 0}) {
+async function start({iterationCount = 0}) {
     console.log("STARTED");
 
-    for (let i = 1; i <= iteration; i++) {
-        // Move mouse to Clear button
-        await wait(1000);
-        robot.moveMouseSmooth(2525, 2145);
-        await wait(1000);
+    for (let i = 1; i <= iterationCount; i++) {
+        /**
+         * click "Clear" button
+         */
+        robot.moveMouseSmooth(2525, 2145, 0);
         robot.mouseClick();
-        await wait(1000);
 
-        // Move mouse to Next button
-        // robot.moveMouseSmooth(1638, 590);
-        robot.moveMouseSmooth(1638, 685);
-        await wait(1000);
+        /**
+         * click "Next" button
+         */
+        // robot.moveMouseSmooth(1638, 590, 10);
+        robot.moveMouseSmooth(1638, 685, 0);
         robot.mouseClick();
-        await wait(10000);
 
-        // Move mouse to + button
-        robot.moveMouseSmooth(2551, 100);
+        /**
+         * wait for '+' button and click
+         */
+        let found = false;
+        // let left = 2540, right = 2560, top = 90, bottom = 110;  // Row 1
+        let left = 2540, right = 2560, top = 140, bottom = 160;  // Row 2
+        let c = {x: 0, y: 0}
+        while (!found) {
+            for (let x = left; x < right && !found; x++) {
+                for (let y = top; y < bottom && !found; y++) {
+                    // robot.moveMouseSmooth(x, y, 0);
+                    found = robot.getPixelColor(x, y).includes('ffffff');
+                    if (found) {
+                        c.x = x;
+                        c.y = y;
+                    }
+                }
+            }
+        }
         await wait(1000);
+        robot.moveMouseSmooth(c.x, c.y, 0);
         robot.mouseClick();
-        await wait(1000);
+        await wait(2 * 1000);
 
-        console.log(`Clicked ${i}/${iteration}  (${iteration - i} left)`);
+        let iterationStr = String(i).padStart(iterationCount?.toString().length);
+        let leftStr = String(iterationCount - i).padStart(iterationCount?.toString().length);
+        console.log(`Clicked ${iterationStr}/${iterationCount} ` + ` ${leftStr} left`);
     }
 
     await wait(1000);

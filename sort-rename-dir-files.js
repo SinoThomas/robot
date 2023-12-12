@@ -2,44 +2,49 @@ const fs = require('fs');
 const path = require('path');
 
 
-// Get dir path from arguments
-const dirPath = process.argv[2];
-if (!dirPath) {
-    console.log('Missing dir path.')
-    console.log('Exiting.')
-    process.exit(0)
-}
-
-console.log('directory: '+ dirPath);
-
-if(!fs.existsSync(dirPath)){
-    console.log('directory not found.')
-    console.log('Exiting.')
-    process.exit(0)
+const dirPaths = process.argv.slice(2)
+for (const dirPath of dirPaths) {
+    sortRenameDirFiles(dirPath)
 }
 
 
+function sortRenameDirFiles(dirPath) {
+    console.log('')
 
-// Get all file in dir & sort
-const fileNames = fs.readdirSync(dirPath).sort()
+    if (!dirPath) {
+        console.log('Missing dir path.')
+        console.log('Skipping.')
+        return;
+    }
 
+    console.log('directory: ' + dirPath);
 
+    if (!fs.existsSync(dirPath)) {
+        console.log('directory not found.')
+        console.log('Skipping.')
+        return
+    }
 
-// Rename files
-for (let i = 0; i < fileNames.length; i++) {
-    const oldFileName = fileNames[i];
-    const oldFilePath = path.join(dirPath, oldFileName)
-    const oldFilePathParsed = path.parse(oldFilePath);
+    // Get all file in dir & sort
+    const fileNames = fs.readdirSync(dirPath).sort()
 
-    const newFileName = String(i + 1).padStart(2, 0);
-    const newFilePath = path.format({
-        root: oldFilePathParsed.root,
-        dir:  oldFilePathParsed.dir,
-        name:  newFileName,
-        ext:  oldFilePathParsed.ext,
-    });
+    // Rename files
+    for (let i = 0; i < fileNames.length; i++) {
+        const oldFileName = fileNames[i];
+        const oldFilePath = path.join(dirPath, oldFileName)
+        const oldFilePathParsed = path.parse(oldFilePath);
 
-    fs.renameSync(oldFilePath, newFilePath);
+        const newFileName = String(i + 1).padStart(2, 0);
+        const newFilePath = path.format({
+            root: oldFilePathParsed.root,
+            dir: oldFilePathParsed.dir,
+            name: newFileName,
+            ext: oldFilePathParsed.ext,
+        });
 
-    console.log('Renamed ' + oldFilePath + " to " + newFilePath);
+        fs.renameSync(oldFilePath, newFilePath);
+
+        console.log('Renamed ' + oldFilePath + " to " + newFilePath);
+    }
 }
+

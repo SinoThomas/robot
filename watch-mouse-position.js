@@ -10,10 +10,11 @@ async function watchMousePosition() {
 
     while (true) {
         const pos = robot.getMousePos();
+        const hex = robot.getPixelColor(pos.x, pos.y);
 
-        console.log('pos<', typeof (pos), '> = ', pos);
+        console.log(`>> X: ${pos.x}  Y: ${pos.y}  HEX: ${hex}  `);
 
-        await wait(100);
+        await wait(300);
     }
 
     console.log("ENDED");
