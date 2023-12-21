@@ -2,7 +2,12 @@ const fs = require('fs');
 const path = require('path');
 
 
-const dirPaths = process.argv.slice(2)
+const parentDirPath = process.argv[2];
+
+const dirPaths = fs.readdirSync(parentDirPath, {withFileTypes: true})
+    .filter(dirent => dirent.isDirectory())
+    .map(dirent => path.join(dirent.path, dirent.name));
+
 for (const dirPath of dirPaths) {
     sortRenameDirFiles(dirPath)
 }
@@ -26,7 +31,7 @@ function sortRenameDirFiles(dirPath) {
     }
 
     // Get all file in dir & sort
-    const fileNames = fs.readdirSync(dirPath).sort()
+    const fileNames = fs.readdirSync(dirPath).filter(path => !path.startsWith('.')).sort()
 
     // Rename files
     for (let i = 0; i < fileNames.length; i++) {
@@ -34,7 +39,7 @@ function sortRenameDirFiles(dirPath) {
         const oldFilePath = path.join(dirPath, oldFileName)
         const oldFilePathParsed = path.parse(oldFilePath);
 
-        const newFileName = String(i + 1).padStart(2, 0);
+        const newFileName = String(i + 1).padStart(fileNames.length.toString().length, '0');
         const newFilePath = path.format({
             root: oldFilePathParsed.root,
             dir: oldFilePathParsed.dir,
