@@ -25,7 +25,7 @@ start({iterationCount}).catch(console.error);
 async function start({iterationCount = 0}) {
     console.log("STARTED");
 
-    for (let i = 1; i <= iterationCount; i++) {
+    for (let i = 2; i <= iterationCount; i++) {
         /**
          * click "Clear" button
          */
@@ -42,22 +42,13 @@ async function start({iterationCount = 0}) {
         /**
          * wait for '+' button and click
          */
-        let found = false;
-        // let left = 2540, right = 2560, top = 90, bottom = 110;  // Row 1
-        let left = 2540, right = 2560, top = 140, bottom = 160;  // Row 2
-        let c = {x: 0, y: 0}
-        while (!found) {
-            for (let x = left; x < right && !found; x++) {
-                for (let y = top; y < bottom && !found; y++) {
-                    // robot.moveMouseSmooth(x, y, 0);
-                    found = robot.getPixelColor(x, y).includes('ffffff');
-                    if (found) {
-                        c.x = x;
-                        c.y = y;
-                    }
-                }
-            }
-        }
+        const c = await waitForColor({
+            color: 'ffffff',
+            left: 2540,
+            right: 2560,
+            top: 140,
+            bottom: 160,
+        })
         await wait(1000);
         robot.moveMouseSmooth(c.x, c.y, 0);
         robot.mouseClick();
@@ -71,3 +62,22 @@ async function start({iterationCount = 0}) {
     await wait(1000);
     console.log("ENDED");
 }
+
+
+async function waitForColor({color, left, right, top, bottom, timeout = Infinity}) {
+    if (!color || !left || !right || !top || !bottom || !timeout) return;
+
+    const startTime = performance.now()
+
+    while (performance.now() < (startTime + timeout)) {
+        for (let x = left; x < right; x++) {
+            for (let y = top; y < bottom; y++) {
+                // robot.moveMouseSmooth(x, y, 0);
+                if (robot.getPixelColor(x, y).includes(color)) {
+                    return {x, y}
+                }
+            }
+        }
+    }
+}
+
