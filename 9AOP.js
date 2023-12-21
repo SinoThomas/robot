@@ -25,42 +25,53 @@ start({iterationCount}).catch(console.error);
 async function start({iterationCount = 0}) {
     console.log("STARTED");
 
-    for (let i = 2; i <= iterationCount; i++) {
-        /**
-         * click "Clear" button
-         */
-        robot.moveMouseSmooth(2525, 2145, 0);
-        robot.mouseClick();
-
-        /**
-         * click "Next" button
-         */
-        // robot.moveMouseSmooth(1638, 590, 10);
-        robot.moveMouseSmooth(1638, 685, 0);
-        robot.mouseClick();
-
+    for (let i = 1; i <= iterationCount; i++) {
         /**
          * wait for '+' button and click
          */
         const c = await waitForColor({
             color: 'ffffff',
-            left: 2540,
-            right: 2560,
-            top: 140,
+            left: 1240, //2540,
+            right: 1260, //2560,
+            top: 150,
             bottom: 160,
         })
         await wait(1000);
-        robot.moveMouseSmooth(c.x, c.y, 0);
-        robot.mouseClick();
-        await wait(2 * 1000);
+        await click(c.x, c.y);
 
         let iterationStr = String(i).padStart(iterationCount?.toString().length);
         let leftStr = String(iterationCount - i).padStart(iterationCount?.toString().length);
         console.log(`Clicked ${iterationStr}/${iterationCount} ` + ` ${leftStr} left`);
+
+        await wait(2 * 1000);
+
+        /**
+         * click "Clear" button
+         */
+        // await click(2525, 2145)
+        await click(1247, 1076)
+
+        /**
+         * click "Next" button
+         */
+        // await click(1638, 685)
+        await click(360, 685)
     }
 
     await wait(1000);
     console.log("ENDED");
+}
+
+
+async function click(x, y) {
+    robot.moveMouseSmooth(x, y, 0);
+    robot.mouseClick();
+
+    // const mousePos = robot.getMousePos();
+    // robot.moveMouse(x, y);
+    // robot.mouseClick();
+    // await wait(100)
+    // robot.moveMouse(mousePos.x, mousePos.y);
 }
 
 
@@ -80,4 +91,3 @@ async function waitForColor({color, left, right, top, bottom, timeout = Infinity
         }
     }
 }
-
