@@ -1,42 +1,44 @@
 // Script Usage
 //=============================================================================
-// node manga-download-images.js --data=/Users/sinothomas/Downloads/manga/Above\ All\ Gods.json
-// node manga-download-images.js --overwrite --data=/Users/sinothomas/Downloads/manga/Above\ All\ Gods.json
+// node manga-download-images.js /Users/sinothomas/Downloads/manga/Above\ All\ Gods.json
+// node manga-download-images.js /Users/sinothomas/Downloads/manga/Above\ All\ Gods.json --overwrite
 //=============================================================================
 
 
 const fs = require("node:fs");
-const downloadImage = require("./download-image.js");
+const readline = require("node:readline");
 const path = require("node:path");
 const createDir = require("./createDir.js");
 const fileExist = require("./fileExist.js");
+const downloadImage = require("./download-image.js");
+const logOnSameLine = require("./logOnSameLine.js");
 
 
 const imageOutputDir = `/Users/sinothomas/Downloads/manga`;
 
 
 // Get dataFilePath
-const dataFilePath = process.argv.find(arg => arg.trim().startsWith('--data=')).split('--data=')[1];
+const dataFilePath = process.argv[2];
 if (!dataFilePath) {
-  console.log('\nMissing DataFilePath.')
-  console.log('Exiting.')
-  process.exit(0)
+  console.log("\nMissing DataFilePath.");
+  console.log("Exiting.");
+  process.exit(0);
 } else {
   console.log(`\nDataFilePath ${dataFilePath}`);
 }
 
 // Get -o , --overwrite Flag
-const overwrite = process.argv.some(arg => ['-o', '--overwrite'].includes(arg.trim().toLowerCase()))
+const overwrite = process.argv.some(arg => ["-o", "--overwrite"].includes(arg.trim().toLowerCase()));
 
 
 // Get data
 let data;
 try {
-  data = JSON.parse(fs.readFileSync(dataFilePath, 'utf8'))
+  data = JSON.parse(fs.readFileSync(dataFilePath, "utf8"));
 } catch (e) {
-  console.log('\nData parse error.', e)
-  console.log('Exiting.')
-  process.exit(0)
+  console.log("\nData parse error.", e);
+  console.log("Exiting.");
+  process.exit(0);
 }
 
 
@@ -54,35 +56,43 @@ let totalCount = 0;
     let ps = [];
     for (const [index, imageUrl] of imageUrls.entries()) {
       const dirPath = path.resolve(imageOutputDir, data?.title?.trim(), chapterKey?.trim());
-      createDir(dirPath)
+      createDir(dirPath);
       const filepath = path.resolve(dirPath, `${index}.jpg`);
       if (fileExist(filepath) && !overwrite) {
-        console.log(`Skipped    image ${filepath}`);
-        skippedCount++
+        logStatus(`Skipped    image ${filepath}`);
+        skippedCount++;
       } else {
         ps.push(
           downloadImage(imageUrl, filepath)
             .then(() => {
-              console.log(`Downloaded image ${filepath}`);
+              logStatus(`Downloaded image ${filepath}`);
             })
             .catch(e => {
-              console.log(`Error Downloading image ${filepath}`);
-              erroredCount++
-            })
+              logStatus(`Error Downloading image ${filepath}`);
+              erroredCount++;
+            }),
         );
-        downloadCount++
+        downloadCount++;
       }
-      totalCount++
+      totalCount++;
     }
     await Promise.all(ps);
   }
+
+
+  logStatus();
+  console.log("\nExiting Successfully.\n");
 })();
 
 
-// Teardown
-console.log();
-console.log(`Total       ${totalCount}`);
-console.log(`Downloaded  ${downloadCount}`);
-console.log(`Skipped     ${skippedCount}`);
-console.log(`Errored     ${erroredCount}`);
-console.log("\nExiting Successfully.\n");
+function logStatus(msg = "") {
+  logOnSameLine(
+    `(${totalCount})Total      ` +
+    `(${downloadCount})Downloaded      ` +
+    `(${skippedCount})Skipped      ` +
+    `(${erroredCount})Errored      ` +
+    `${msg}`,
+  );
+}
+
+
