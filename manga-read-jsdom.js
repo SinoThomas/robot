@@ -1,13 +1,14 @@
 // Script Usage
 //=============================================================================
-// node manga-read.js --url=https://www.mangaread.org/manga/against-the-gods/chapter-0/
-// node manga-read.js --overwrite --url=https://www.mangaread.org/manga/against-the-gods/chapter-0/
+// node manga-read-jsdom.js --url=https://www.mangaread.org/manga/against-the-gods/chapter-0/
+// node manga-read-jsdom.js --overwrite --url=https://www.mangaread.org/manga/against-the-gods/chapter-0/
 //=============================================================================
 
 
-const {chromium} = require('playwright');
-const writeFileSyncRecursive = require("./writeFileSyncRecursive.js");
 const fs = require("node:fs");
+const axios = require('axios');
+const {JSDOM} = require('jsdom');
+const writeFileSyncRecursive = require("./writeFileSyncRecursive.js");
 
 
 const dataFileDir = `/Users/sinothomas/Downloads/manga`;
@@ -19,7 +20,6 @@ let manga = {
 
 
 // Get firstPageUrl
-// const firstPageUrl = String(process.argv[2]);
 const firstPageUrl = process.argv.find(arg => arg.trim().startsWith('--url=')).split('--url=')[1];
 if (!firstPageUrl) {
   console.log('\nMissing FirstPageUrl.')
@@ -35,21 +35,17 @@ const overwrite = process.argv.some(arg => ['-o', '--overwrite'].includes(arg.tr
 
 
 (async () => {
-  const browser = await chromium.launch({headless: true, timeout: 3000});
-  const context = await browser.newContext({
-    viewport: {width: 400, height: 2000}
-  });
-  const page = await context.newPage();
-  await page.goto(firstPageUrl, {waitUntil: 'load'});
+  // Get HTML
+  let document = await getDocument(firstPageUrl);
 
 
   // Get Title
   const titleElSelector = '#manga-reading-nav-head > div > div.entry-header_wrap > div > div.c-breadcrumb > ol > li:nth-child(2) > a'
-  const titleEl = await page.waitForSelector(titleElSelector, {timeout: 3000});
-  const title = await titleEl.textContent().then(s => s.trim())
+  const title = document.querySelector(titleElSelector)?.textContent?.trim();
   manga.title = title;
-  console.log(`\nTitle   ${title}`);
 
+
+  // Read data from file
   const dataFromFile = readFromFile({title})
   if (dataFromFile) {
     console.log(`Data found at '${getFilePath({title})}'`);
@@ -63,35 +59,31 @@ const overwrite = process.argv.some(arg => ['-o', '--overwrite'].includes(arg.tr
   for (let i = 0; thereIsNextChapter; i++) {
     // Get Chapter Number
     const chapterElSelector = '#manga-reading-nav-head > div > div.entry-header_wrap > div > div.c-breadcrumb > ol > li.active'
-    const chapterEl = await page.waitForSelector(chapterElSelector, {timeout: 3000});
-    const chapter = await chapterEl.textContent().then(s => s.replace(/^\D+/g, '').trim())
-
+    const chapterEl = document.querySelector(chapterElSelector)
+    const chapter = chapterEl.textContent.replace(/^\D+/g, '').trim()
 
     const chapterExist = manga?.chapters[chapter]?.length > 0;
     if (chapterExist && !overwrite) {
-      console.log(`Chapter ${chapter.padStart(5)}  Skipped in ${getDuration(true)}ms`);
+      console.log(`Chapter ${chapter.padStart(5)}     Skipped    in ${getDuration(true)}ms`);
     } else {
       manga.chapters[chapter] = [];
 
       // Get all image src
       const imagesElSelector = '.reading-content .page-break img'
-      await page.waitForSelector(imagesElSelector, {timeout: 3000});
-      const imagesEls = await page.$$(imagesElSelector)
+      const imagesEls = document.querySelectorAll(imagesElSelector)
       for (const imageEl of imagesEls) {
-        const imageSrc = (await imageEl.getAttribute('src')).trim()
+        const imageSrc = imageEl.getAttribute('src').trim()
         manga.chapters[chapter].push(imageSrc);
       }
       console.log(`Chapter ${chapter.padStart(5)}     Added ${String(imagesEls?.length).padStart(3)} images    in ${getDuration(true)}ms`);
     }
 
-    // Click Next Button
+    // Navigate to Next page
     const nextBtnElSelector = 'a.next_page'
-    try {
-      // Check if the "Next" button exists within a timeout
-      await page.waitForSelector(nextBtnElSelector, {timeout: 3000});
-      await page.click(nextBtnElSelector);
-    } catch (error) {
-      console.log("\nNext button not found.\n");
+    const nextHref = document.querySelector(nextBtnElSelector)?.href
+    if (nextHref?.length > 0) {
+      document = await getDocument(nextHref);
+    } else {
       thereIsNextChapter = false;
     }
 
@@ -101,10 +93,20 @@ const overwrite = process.argv.some(arg => ['-o', '--overwrite'].includes(arg.tr
   await writeToFile(manga);
 
   // Teardown
-  await context.close();
-  await browser.close();
   console.log("\nExiting Successfully.\n");
 })();
+
+
+async function getDocument(url) {
+  try {
+    const response = await axios.get(url);
+    const {window} = new JSDOM(response.data);
+    return window.document;
+  } catch (error) {
+    console.error(`Error fetching ${url}`, error);
+    return undefined;
+  }
+}
 
 
 function getFilePath({title}) {
