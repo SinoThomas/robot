@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Store Sample</title>
+  <style>
+      body {
+          background: black;
+      }
+  </style>
+</head>
+<body>
+
+</body>
+</html>
+
+
+<!-- Store ==================================================================-->
+<script>
+  // A Simple functional data store example
+  // Store
+  window.store = {
+    _props: [],
+    uuidv4: () => "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c => (+c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> +c / 4).toString(16)),
+    getId: () => store.uuidv4(),
+    add: (propName, val = undefined) => {
+      if (!propName) throw "Missing 'propName'";
+      // Store Value
+      window.store["_" + propName] = val;
+      // Store Subscribers
+      window.store["_" + propName + "Subs"] = new Map();
+      // Observable
+      window.store[propName + "$"] = (sub) => {
+        const id = store.getId();
+        store["_" + propName + "Subs"].set(id, sub);
+        return {
+          unsubscribe: () => store["_" + propName + "Subs"].delete(id),
+        };
+      };
+      // Getter & Setter
+      Object.defineProperty(window.store, propName, {
+        configurable: true,
+        enumerable: true,
+        get() {
+          return store["_" + propName];
+        },
+        set(val) {
+          store["_" + propName] = val;
+          store["_" + propName + "Subs"].forEach((sub) => sub.next(val));
+        },
+      });
+      store._props.push(propName);
+    },
+    remove: (propName) => {
+      if (!store._props.includes(propName)) throw `Property ${propName} not found in store`;
+      delete window.store["_" + propName];
+      window.store["_" + propName + "Subs"].forEach(sub => sub.done && sub.done());
+      delete window.store["_" + propName + "Subs"];
+      delete window.store[propName + "$"];
+      delete window.store[propName];
+      // removePropertiesFromObject(window.store, propName);
+      store._props = store._props.filter((prop) => prop !== propName);
+    },
+    reset: () => {
+      store._props.forEach((prop) => store.remove(prop));
+    },
+  };
+
+
+  // Add Property
+  store.add("loading", false);
+
+
+  // Add Actions
+  store.dispatch = {};
+  store.dispatch.startLoading = () => store.loading = true;
+  store.dispatch.stopLoading = () => store.loading = false;
+
+
+  // Usage =====================================================================
+  // Subscribe
+  const loadingSelector = store.loading$({
+    next: (isLoading) => console.log("isLoading :", typeof (isLoading), "= ", isLoading),
+    error: (error) => console.log("error :", typeof (error), "= ", error),
+    done: () => console.log("done"),
+  });
+  // Dispatch actions
+  store.dispatch.startLoading();
+  store.dispatch.stopLoading();
+  store.dispatch.startLoading();
+  store.dispatch.stopLoading();
+  // Unsubscribe
+  loadingSelector.unsubscribe();
+  // Remove Property
+  store.remove("loading");
+  // ===========================================================================
+
+  // console.table(store);
+  // console.log("store :", typeof (store), "= ", store);
+</script>
+<!--=========================================================================-->
+
+
+<!-- Tests ==================================================================-->
+<script>
+  console.log(new Array(50).fill("+").join("="));
+  console.log(`
+╔╦╗┌─┐┌─┐┌┬┐┌─┐
+ ║ ├┤ └─┐ │ └─┐
+ ╩ └─┘└─┘ ┴ └─┘`);
+
+  afterEach(() => store.reset());
+  describe("store.getId()");
+  it("should return uuidv4 string", () => {
+    const uuidRegex = /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i;
+    const id = store.getId();
+    expect(uuidRegex.test(id)).toEqual(true);
+  });
+
+  describe("store.uuidv4()");
+  it("should return uuidv4 string", () => {
+    const uuidRegex = /^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$/i;
+    const id = store.uuidv4();
+    expect(uuidRegex.test(id)).toEqual(true);
+  });
+
+  describe("store.add()");
+  it("should throw if propName in not a valid string", () => {
+    expect(() => store.add()).toThrow("Missing 'propName'");
+  });
+  it("should create _ property", () => {
+    store.add("testPropUndefined");
+    expect(store._testPropUndefined).toEqual(undefined);
+    const bool = true;
+    store.add("testPropBoolean", bool);
+    expect(store._testPropBoolean).toEqual(bool);
+    const obj = {val: "asdf"};
+    store.add("testPropObject", obj);
+    expect(store._testPropObject).toEqual(obj);
+    const arr = [1, 2, 3];
+    store.add("testPropArr", arr);
+    expect(store._testPropArr).toEqual(arr);
+  });
+  it("should create _ subs property", () => {
+    store.add("testProp", true);
+    expect(typeof store._testPropSubs).toEqual("object");
+    store.testProp$({
+      next: (newVal) => val = newVal,
+    });
+    expect(store._testPropSubs.size).toEqual(1);
+  });
+  it("should create $ observable property", () => {
+    store.add("testProp", true);
+    expect(typeof store.testProp$).toEqual("function");
+
+    let val;
+    store.testProp$({
+      next: (newVal) => val = newVal,
+    });
+    store.testProp = 100;
+    expect(val).toEqual(100);
+  });
+  it("should create $ observable property ", () => {
+    store.add("testProp", true);
+    expect(typeof store.testProp$).toEqual("function");
+  });
+  it("should create getter & setter property", () => {
+    store.add("testProp", true);
+    store.testProp = 5;
+    expect(store["testProp"]).toEqual(5);
+  });
+
+  describe("store.remove()");
+  it("should remove all associated properties", () => {
+    store.add("testProp", true);
+    expect(store.testProp).toEqual(true);
+    let doneCalled = false;
+    store.testProp$({done: () => doneCalled = true});
+    store.remove("testProp");
+    expect(doneCalled).toEqual(true);
+    expect(store.testProp).toEqual(undefined);
+    expect(store.testProp$).toEqual(undefined);
+    expect(store._testProp).toEqual(undefined);
+    expect(store._testPropSubs).toEqual(undefined);
+  });
+  console.log(new Array(50).fill("+").join("="));
+
+  function describe(s) {
+    console.log(`Describe ${s}`);
+  }
+  function afterEach(fn) {
+    if (!window.tests) window.tests = {};
+    if (!window.tests.afterEachFns) window.tests.afterEachFns = [];
+    window.tests.afterEachFns.push(fn);
+  }
+  function it(test, testFunc) {
+    try {
+      testFunc();
+      console.log(`  ${test}`);
+    } catch (error) {
+      console.error(`  ${test}Error: ${error}`);
+    }
+    try {
+      if (window.tests.afterEachFns) window.tests.afterEachFns.forEach(fn => fn());
+    } catch (error) {
+      console.error("afterEach Error: ", error);
+    }
+  }
+  function expect(val) {
+    return {
+      toEqual(eqVal) {
+        if (val !== eqVal) throw `Expected ${val} to be equal to ${eqVal}`;
+      },
+      toThrow(msg) {
+        let error;
+        try {
+          val();
+        } catch (e) {
+          error = e;
+        }
+        if (!error)
+          throw `\n    Expected to throw "${msg}" but nothing thrown`;
+        if (error !== msg)
+          throw `\n    Expected to throw "${msg}" but thrown $\{error}`;
+      },
+    };
+  }
+</script>
+<!--=========================================================================-->

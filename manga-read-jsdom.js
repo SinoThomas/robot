@@ -2,6 +2,7 @@
 //=============================================================================
 // node manga-read-jsdom.js https://www.mangaread.org/manga/against-the-gods/chapter-0/
 // node manga-read-jsdom.js https://www.mangaread.org/manga/against-the-gods/chapter-0/ --overwrite
+// node ~/Development/Projects/robot/manga-read-jsdom.js https://www.mangaread.org/manga/i-am-a-cultivation-bigshot/chapter-0
 //=============================================================================
 
 
@@ -12,7 +13,25 @@ const writeFileSyncRecursive = require("./writeFileSyncRecursive.js");
 const logOnSameLine = require("./logOnSameLine.js");
 
 
-const dataFileDir = `/Users/sinothomas/Downloads/manga`;
+const dataDirOptions = [
+  `/Volumes/4 TB SSD X9/Manga`,
+  `/Users/sinothomas/Downloads/manga`,
+];
+let dataFileDir;
+for (const path of dataDirOptions) {
+  if (fs.existsSync(path)) {
+    dataFileDir = path;
+    break;
+  }
+}
+if (dataFileDir) {
+  console.log("\nData Directory: " + dataFileDir);
+} else {
+  console.log("\nData Directory not found.");
+  console.log("Exiting.");
+  process.exit(0);
+}
+
 
 let manga = {
   title: "",
@@ -27,8 +46,9 @@ if (!firstPageUrl) {
   console.log("Exiting.");
   process.exit(0);
 } else {
-  console.log(`\nFirstPageUrl ${firstPageUrl}`);
+  console.log(`\nFirstPageUrl   ${firstPageUrl}`);
 }
+console.log();
 
 
 // Get -o , --overwrite Flag
@@ -49,23 +69,23 @@ const overwrite = process.argv.some(arg => ["-o", "--overwrite"].includes(arg.tr
   // Read data from file
   const dataFromFile = readFromFile({title});
   if (dataFromFile) {
-    console.log(`Data at      ${getFilePath({title})}`);
+    console.log(`Data Saved To  ${getFilePath({title})}`);
     manga = dataFromFile;
   }
-  console.log();
 
 
   let thereIsNextChapter = true;
+  let imagesCount = 0;
 
   for (let i = 0; thereIsNextChapter; i++) {
     // Get Chapter Number
     const chapterElSelector = "#manga-reading-nav-head > div > div.entry-header_wrap > div > div.c-breadcrumb > ol > li.active";
     const chapterEl = document.querySelector(chapterElSelector);
-    const chapter = chapterEl.textContent.replace(/^\D+/g, "").trim();
+    const chapter = chapterEl.textContent.replace(/[^0-9]/g, "").trim();
 
     const chapterExist = manga?.chapters[chapter]?.length > 0;
     if (chapterExist && !overwrite) {
-      logOnSameLine(`Chapter(${chapter})   Skipped    in ${getDuration(true)}ms`);
+      logOnSameLine(`Reading        ${title} Chapter(${chapter})   Skipped`);
     } else {
       manga.chapters[chapter] = [];
 
@@ -76,7 +96,8 @@ const overwrite = process.argv.some(arg => ["-o", "--overwrite"].includes(arg.tr
         const imageSrc = imageEl.getAttribute("src").trim();
         manga.chapters[chapter].push(imageSrc);
       }
-      logOnSameLine(`Chapter(${chapter})   Added ${String(imagesEls?.length).padStart(3)} images    in ${getDuration(true)}ms`);
+      imagesCount += imagesEls?.length;
+      logOnSameLine(`Reading        ${title} Chapter(${chapter})   Added ${String(imagesCount)} images`);
     }
 
     // Navigate to Next page
