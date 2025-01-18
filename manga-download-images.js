@@ -2,6 +2,7 @@
 //=============================================================================
 // node manga-download-images.js /Users/sinothomas/Downloads/manga/Above\ All\ Gods.json
 // node manga-download-images.js /Users/sinothomas/Downloads/manga/Above\ All\ Gods.json --overwrite
+// node ~/Development/Projects/robot/manga-download-images.js /Volumes/4\ TB\ SSD\ X9/Manga/The\ Player\ With\ a\ Hidden\ Past.json
 //=============================================================================
 
 
@@ -14,7 +15,24 @@ const downloadImage = require("./download-image.js");
 const logOnSameLine = require("./logOnSameLine.js");
 
 
-const imageOutputDir = `/Users/sinothomas/Downloads/manga`;
+const pathOptions = [
+  `/Volumes/4 TB SSD X9/Manga`,
+  `/Users/sinothomas/Downloads/Manga`,
+];
+let imageOutputDir;
+for (const path of pathOptions) {
+  if (fs.existsSync(path)) {
+    imageOutputDir = path;
+    break;
+  }
+}
+if (imageOutputDir) {
+  console.log("\nOutput Directory: " + imageOutputDir);
+} else {
+  console.log("\nOutput Directory not found.");
+  console.log("Exiting.");
+  process.exit(0);
+}
 
 
 // Get dataFilePath
